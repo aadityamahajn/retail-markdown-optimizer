@@ -9,11 +9,11 @@ st.title("Retail Markdown Optimizer")
 
 budget = st.sidebar.number_input("Budget Limit ($)", min_value=1000, value=8000, step=500)
 
-tab1, tab2 = st.tabs(["Forecasting with LightGBM Models", "Markdown Optimization"])
+tab1, tab2 = st.tabs(["Forecasting", "Markdown Optimization"])
 
-# ====================== FORECASTING TAB ======================
+# ====================== FORECASTING ======================
 with tab1:
-    st.subheader("Forecasting using LightGBM models")
+    st.subheader("Forecasting with Trained LightGBM Models")
     
     model_files = [
         "lgbm_model_CA_1.joblib", "lgbm_model_CA_2.joblib", "lgbm_model_CA_3.joblib", "lgbm_model_CA_4.joblib",
@@ -25,10 +25,9 @@ with tab1:
     try:
         for f in model_files:
             models[f] = joblib.load(f"models/{f}")
-        st.success("✅ All 10 LightGBM models loaded successfully!")
+        st.success("✅ All 10 models loaded")
     except Exception as e:
-        st.error(f"Failed to load models: {e}")
-        st.info("Put 10 .joblib files in the 'models/' folder")
+        st.error(f"Model load error: {e}")
         st.stop()
 
     uploaded_sales = st.file_uploader("Upload sample_sales.csv", type="csv")
@@ -37,36 +36,27 @@ with tab1:
         sales_df = pd.read_csv(uploaded_sales)
         st.dataframe(sales_df.head())
         
-        if st.button("Run Forecast with Trained Models"):
-            with st.spinner("Running forecast using your trained models..."):
+        if st.button("Run Forecast"):
+            with st.spinner("Forecasting..."):
                 results = []
-                
-                # Use all unique items from the uploaded file
                 for item in sales_df['item_id'].unique():
-                    item_df = sales_df[sales_df['item_id'] == item].copy()
-                    if len(item_df) < 5:   # lower threshold so it doesn't skip
+                    item_df = sales_df[sales_df['item_id'] == item]
+                    if len(item_df) < 5:
                         continue
-                    
                     last_sales = item_df['sales'].iloc[-1]
                     
-                    # Use first model for demo (you can change to any model)
-                    # Replace this line with your actual notebook prediction logic
-                    # e.g. features = ... ; pred = models["lgbm_model_CA_1.joblib"].predict(features)
-                    pred = last_sales * 1.12   # Dummy - replace with real prediction
+                    # Replace this with your real prediction logic later
+                    pred = last_sales * 1.12
                     
                     results.append({
                         "item_id": item,
                         "last_sales": int(last_sales),
-                        "forecast_next_28_days_avg": round(pred, 1),
+                        "forecast_next_28_avg": round(pred, 1),
                         "model_used": "lgbm_model_CA_1.joblib"
                     })
-                
-                if results:
-                    st.dataframe(pd.DataFrame(results))
-                else:
-                    st.warning("Not enough data per item. Add more rows to sample_sales.csv")
+                st.dataframe(pd.DataFrame(results))
 
-# ====================== OPTIMIZATION TAB ======================
+# ====================== OPTIMIZATION ======================
 with tab2:
     st.subheader("Markdown Optimization")
     uploaded_matrix = st.file_uploader("Upload sample_simulation.csv", type="csv")
@@ -78,7 +68,6 @@ with tab2:
         
         df = pd.read_csv(uploaded_matrix)
         
-        # Exact heuristic from your notebook
         df['priority_score'] = df['total_demand'] / (df['markdown_cost'] + 0.01)
         
         base_df = df[df['scenario_id'] == 'd_0'].set_index(['item_id', 'store_id'])
@@ -90,7 +79,7 @@ with tab2:
         
         for _, row in markdown_options.iterrows():
             key = (row['item_id'], row['store_id'])
-            if key not in covered_items and (spent + row['markdown_cost'] <= budget):
+            if key not in covered_items and spent + row['markdown_cost'] <= budget:
                 selected_markdowns.append(row)
                 spent += row['markdown_cost']
                 covered_items.add(key)
@@ -106,16 +95,16 @@ with tab2:
         label_map = {'d_0': 'Full Price', 'd_10': '10% Markdown', 'd_20': '20% Markdown'}
         result_df['strategy_label'] = result_df['scenario_id'].map(label_map)
         
-        st.success(f"Optimization Complete! Spent ${spent:,.0f} of ${budget:,.0f}")
+        st.success(f"Done! Spent ${spent:,.0f} of ${budget:,.0f}")
         st.dataframe(result_df[['item_id', 'strategy_label', 'total_demand', 'markdown_cost']])
         
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
         sns.countplot(data=result_df, x='strategy_label', 
                       order=['Full Price', '10% Markdown', '20% Markdown'], 
                       palette='viridis', ax=ax1)
-        ax1.set_title('Business Strategy Mix')
+        ax1.set_title('Strategy Mix')
         
         actual_spend = result_df[result_df['scenario_id'] != 'd_0']['markdown_cost'].sum()
-        ax2.bar(['Budget Limit', 'Actual Spend'], [budget, actual_spend], color=['gray', 'purple'])
+        ax2.bar(['Budget', 'Spent'], [budget, actual_spend], color=['gray', 'purple'])
         ax2.set_title(f'Budget Utilization: {(actual_spend/budget)*100:.1f}%')
         st.pyplot(fig)
