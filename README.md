@@ -19,15 +19,6 @@ This project demonstrates a full retail analytics pipeline:
 
 **Key Takeaway**: In real retail, when data lacks strong price elasticity, a well-designed greedy heuristic often outperforms complex MILP solvers in speed, adoption, and business impact.
 
-## Repository Structure
-retail-markdown-app/
-├── app.py                          ← Streamlit Web App
-├── models/                         ← 10 trained LightGBM models (per store)
-├── sample_simulation.csv
-├── sample_sales.csv
-├── notebooks/                       ← Original Colab Notebooks
-└── README.md
-
 ## How to Run the Streamlit App
 1. Clone the repository
 2. Install dependencies:
